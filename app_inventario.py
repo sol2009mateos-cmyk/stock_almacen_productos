@@ -77,7 +77,7 @@ class AppInventario:
         self.frame_menu.pack_propagate(False)
 
         # Logo
-        tk.Label(self.frame_menu, text="🏪", font=("Arial", 40), 
+        tk.Label(self.frame_menu, text="🏪", font=("Arial", 40),
                 bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(pady=(20, 5))
 
         tk.Label(self.frame_menu, text="StockMaster", font=("Arial", 16, "bold"),
@@ -118,7 +118,7 @@ class AppInventario:
 
         # Info del sistema
         tk.Label(self.frame_menu, text="📅 " + datetime.now().strftime("%d/%m/%Y"),
-                font=("Arial", 10), bg=COLORES['bg_panel'], 
+                font=("Arial", 10), bg=COLORES['bg_panel'],
                 fg=COLORES['texto_secundario']).pack(pady=5)
 
         tk.Label(self.frame_menu, text=f"📦 {len(self.todos_productos)} productos",
@@ -126,7 +126,7 @@ class AppInventario:
                 fg=COLORES['texto_secundario']).pack(pady=5)
 
         # Alertas
-        productos_por_vencer = len([p for p in self.todos_productos 
+        productos_por_vencer = len([p for p in self.todos_productos
                                     if p.get('dias_para_vencer') and p['dias_para_vencer'] <= 30])
         stock_bajo = len([p for p in self.todos_productos if p['cantidad'] <= p['stock_minimo']])
 
@@ -155,20 +155,49 @@ class AppInventario:
         self.vista_actual = "dashboard"
         self.resaltar_boton("📊 Dashboard")
 
+        # FIX: Envolver todo el dashboard en un Canvas con scrollbar
+        # para evitar que el contenido quede cortado en pantallas pequeñas
+        canvas_dash = tk.Canvas(self.frame_contenido, bg=COLORES['bg_principal'],
+                                highlightthickness=0)
+        scrollbar_dash = ttk.Scrollbar(self.frame_contenido, orient="vertical",
+                                       command=canvas_dash.yview)
+        frame_dash = tk.Frame(canvas_dash, bg=COLORES['bg_principal'])
+
+        frame_dash.bind("<Configure>",
+            lambda e: canvas_dash.configure(scrollregion=canvas_dash.bbox("all")))
+
+        canvas_dash.create_window((0, 0), window=frame_dash, anchor="nw")
+        canvas_dash.configure(yscrollcommand=scrollbar_dash.set)
+
+        canvas_dash.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_dash.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas_dash.bind("<MouseWheel>",
+            lambda e: canvas_dash.yview_scroll(int(-1*(e.delta/120)), "units"))
+        canvas_dash.bind("<Button-4>",
+            lambda e: canvas_dash.yview_scroll(-1, "units"))
+        canvas_dash.bind("<Button-5>",
+            lambda e: canvas_dash.yview_scroll(1, "units"))
+
+        # Ajustar el ancho del frame interno al canvas
+        def _ajustar_ancho(event):
+            canvas_dash.itemconfig(canvas_dash.find_withtag("all")[0], width=event.width)
+        canvas_dash.bind("<Configure>", _ajustar_ancho)
+
         # Header
-        frame_header = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'], height=80)
+        frame_header = tk.Frame(frame_dash, bg=COLORES['bg_principal'], height=80)
         frame_header.pack(fill=tk.X, padx=25, pady=(20, 10))
         frame_header.pack_propagate(False)
 
         tk.Label(frame_header, text="📊 Dashboard", font=("Arial", 24, "bold"),
                 bg=COLORES['bg_principal'], fg=COLORES['texto_titulo']).pack(side=tk.LEFT, pady=15)
 
-        tk.Label(frame_header, text=f"Bienvenido de vuelta - {datetime.now().strftime('%A %d de %B, %Y')}",
+        tk.Label(frame_header, text=f"Bienvenido de vuelta — {datetime.now().strftime('%A %d de %B, %Y')}",
                 font=("Arial", 12), bg=COLORES['bg_principal'],
                 fg=COLORES['texto_secundario']).pack(side=tk.LEFT, padx=20, pady=20)
 
         # Tarjetas de resumen
-        frame_tarjetas = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'])
+        frame_tarjetas = tk.Frame(frame_dash, bg=COLORES['bg_principal'])
         frame_tarjetas.pack(fill=tk.X, padx=25, pady=10)
 
         # Calcular métricas
@@ -199,8 +228,9 @@ class AppInventario:
             self.crear_tarjeta_resumen(frame_tarjetas, titulo, valor, color, subtitulo)
 
         # Panel inferior: gráfica + listas
-        frame_inferior = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'])
-        frame_inferior.pack(fill=tk.BOTH, expand=True, padx=25, pady=10)
+        # FIX: Usar altura mínima fija para que no se corte
+        frame_inferior = tk.Frame(frame_dash, bg=COLORES['bg_principal'])
+        frame_inferior.pack(fill=tk.X, padx=25, pady=10)
 
         # --- Gráfica ventas 7 días ---
         frame_grafica = tk.Frame(frame_inferior, bg=COLORES['bg_panel'])
@@ -220,7 +250,9 @@ class AppInventario:
             dias_labels.append(etiqueta)
             dias_valores.append(total_dia)
 
-        canvas_g = tk.Canvas(frame_grafica, bg=COLORES['bg_panel'], highlightthickness=0, height=200)
+        # FIX: altura fija garantizada para la gráfica
+        canvas_g = tk.Canvas(frame_grafica, bg=COLORES['bg_panel'], highlightthickness=0,
+                             height=220, width=400)
         canvas_g.pack(fill=tk.X, padx=15, pady=(0, 10))
 
         def dibujar_grafica(event=None):
@@ -337,9 +369,9 @@ class AppInventario:
                     bg=COLORES['bg_panel'], fg=COLORES['exito']).pack(pady=15)
 
     def crear_tarjeta_resumen(self, parent, titulo, valor, color, subtitulo):
-        frame = tk.Frame(parent, bg=COLORES['bg_panel'], width=250, height=120)
-        frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8)
-        frame.pack_propagate(False)
+        # FIX: Usar minsize en lugar de height fijo para evitar contenido cortado
+        frame = tk.Frame(parent, bg=COLORES['bg_panel'], width=250)
+        frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=8, pady=4)
 
         # Barra de color superior
         tk.Frame(frame, bg=color, height=4).pack(fill=tk.X)
@@ -413,7 +445,13 @@ class AppInventario:
 
         self.canvas_lista.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas_lista.bind_all("<MouseWheel>", lambda e: self.canvas_lista.yview_scroll(int(-1*(e.delta/120)), "units"))
+
+        # FIX: Usar bind en lugar de bind_all para evitar interferencias entre vistas
+        self.canvas_lista.bind("<Enter>",
+            lambda e: self.canvas_lista.bind_all("<MouseWheel>",
+                lambda ev: self.canvas_lista.yview_scroll(int(-1*(ev.delta/120)), "units")))
+        self.canvas_lista.bind("<Leave>",
+            lambda e: self.canvas_lista.unbind_all("<MouseWheel>"))
 
         # Panel detalle (derecha)
         frame_detalle = tk.Frame(frame_main, bg=COLORES['bg_panel'], width=700)
@@ -664,12 +702,14 @@ class AppInventario:
                 w.bind("<Button-1>", lambda e, p=prod: self.seleccionar_producto(p))
                 w.config(cursor="hand2")
 
-        # Botón editar
-        btn_editar = tk.Button(frame, text="✏️", font=("Arial", 10),
-                               bg=color_bg, fg=COLORES['acento'],
-                               relief=tk.FLAT, cursor="hand2", padx=4,
+        # FIX: Botón editar más grande y visible
+        btn_editar = tk.Button(frame, text="✏️ Editar",
+                               font=("Arial", 9, "bold"),
+                               bg=COLORES['acento'], fg="white",
+                               relief=tk.FLAT, cursor="hand2",
+                               padx=10, pady=4,
                                command=lambda p=prod: self.abrir_editor_producto(p))
-        btn_editar.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=4)
+        btn_editar.place(relx=1.0, rely=0.0, anchor="ne", x=-6, y=6)
 
     def seleccionar_producto(self, prod):
         self.producto_seleccionado = prod
@@ -749,7 +789,7 @@ class AppInventario:
         """Ventana emergente para editar campos esenciales del producto"""
         win = tk.Toplevel(self.root)
         win.title(f"✏️ Editar — {prod['id']}")
-        win.geometry("420x400")
+        win.geometry("440x430")
         win.configure(bg=COLORES['bg_panel'])
         win.resizable(False, False)
         win.grab_set()
@@ -766,6 +806,7 @@ class AppInventario:
         campos = [
             ("Nombre", "nombre", prod.get('nombre', '')),
             ("Precio", "precio", str(prod.get('precio', ''))),
+            ("Costo", "costo", str(prod.get('costo', ''))),
             ("Cantidad", "cantidad", str(prod.get('cantidad', ''))),
             ("Stock Mínimo", "stock_minimo", str(prod.get('stock_minimo', ''))),
             ("Proveedor", "proveedor", prod.get('proveedor', '')),
@@ -791,6 +832,7 @@ class AppInventario:
             try:
                 nuevo_nombre = entradas['nombre'].get().strip()
                 nuevo_precio = float(entradas['precio'].get())
+                nuevo_costo = float(entradas['costo'].get()) if entradas['costo'].get().strip() else prod.get('costo', 0)
                 nueva_cantidad = int(entradas['cantidad'].get())
                 nuevo_minimo = int(entradas['stock_minimo'].get())
                 nuevo_proveedor = entradas['proveedor'].get().strip()
@@ -800,15 +842,33 @@ class AppInventario:
                     messagebox.showerror("Error", "El nombre no puede estar vacío.", parent=win)
                     return
 
+                # FIX: Recalcular ganancia y margen al guardar
+                nueva_ganancia = round(nuevo_precio - nuevo_costo, 2)
+                nuevo_margen = round((nueva_ganancia / nuevo_precio) * 100, 1) if nuevo_precio > 0 else 0
+
+                # FIX: Recalcular dias_para_vencer si se cambió la fecha
+                nuevos_dias = None
+                if nueva_fecha:
+                    try:
+                        fecha_dt = datetime.strptime(nueva_fecha, '%Y-%m-%d')
+                        nuevos_dias = (fecha_dt - datetime.now()).days
+                    except:
+                        pass
+
                 # Actualizar en la lista de productos
                 for p in self.todos_productos:
                     if p['id'] == prod['id']:
                         p['nombre'] = nuevo_nombre
                         p['precio'] = nuevo_precio
+                        p['costo'] = nuevo_costo
+                        p['ganancia'] = nueva_ganancia
+                        p['margen'] = nuevo_margen
                         p['cantidad'] = nueva_cantidad
                         p['stock_minimo'] = nuevo_minimo
                         p['proveedor'] = nuevo_proveedor
                         p['fecha_vencimiento'] = nueva_fecha
+                        if nuevos_dias is not None:
+                            p['dias_para_vencer'] = nuevos_dias
                         break
 
                 # Guardar en archivo
@@ -823,7 +883,7 @@ class AppInventario:
                     self.seleccionar_producto(prod)
 
             except ValueError:
-                messagebox.showerror("Error", "Precio, cantidad y stock mínimo deben ser números.", parent=win)
+                messagebox.showerror("Error", "Precio, costo, cantidad y stock mínimo deben ser números.", parent=win)
 
         frame_btns = tk.Frame(win, bg=COLORES['bg_panel'])
         frame_btns.pack(pady=18)
@@ -869,9 +929,34 @@ class AppInventario:
         self.entry_venta_buscar.bind("<KeyRelease>", lambda e: self.buscar_producto_venta())
         self.entry_venta_buscar.bind("<Return>", lambda e: self.buscar_producto_venta())
 
-        # Resultados de búsqueda
-        self.frame_resultados_venta = tk.Frame(frame_izq, bg=COLORES['bg_panel'])
-        self.frame_resultados_venta.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        # FIX: Indicación visual del mínimo de caracteres
+        self.lbl_hint_buscar = tk.Label(frame_izq, text="Escribe al menos 2 caracteres para buscar",
+                                        font=("Arial", 9), bg=COLORES['bg_panel'],
+                                        fg=COLORES['texto_secundario'])
+        self.lbl_hint_buscar.pack(anchor="w", padx=15)
+
+        # Resultados de búsqueda con scroll
+        frame_res_outer = tk.Frame(frame_izq, bg=COLORES['bg_panel'])
+        frame_res_outer.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        canvas_res = tk.Canvas(frame_res_outer, bg=COLORES['bg_panel'], highlightthickness=0)
+        scrollbar_res = ttk.Scrollbar(frame_res_outer, orient="vertical", command=canvas_res.yview)
+        self.frame_resultados_venta = tk.Frame(canvas_res, bg=COLORES['bg_panel'])
+
+        self.frame_resultados_venta.bind("<Configure>",
+            lambda e: canvas_res.configure(scrollregion=canvas_res.bbox("all")))
+
+        canvas_res.create_window((0, 0), window=self.frame_resultados_venta, anchor="nw")
+        canvas_res.configure(yscrollcommand=scrollbar_res.set)
+
+        canvas_res.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_res.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas_res.bind("<Enter>",
+            lambda e: canvas_res.bind_all("<MouseWheel>",
+                lambda ev: canvas_res.yview_scroll(int(-1*(ev.delta/120)), "units")))
+        canvas_res.bind("<Leave>",
+            lambda e: canvas_res.unbind_all("<MouseWheel>"))
 
         # Derecha: Carrito
         frame_der = tk.Frame(frame_main, bg=COLORES['bg_panel'], width=500)
@@ -881,13 +966,29 @@ class AppInventario:
         tk.Label(frame_der, text="🛒 Carrito de Compras", font=("Arial", 14, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=10)
 
-        # Lista del carrito
-        self.frame_carrito = tk.Frame(frame_der, bg=COLORES['bg_panel'])
-        self.frame_carrito.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        # FIX: Canvas con scroll para el carrito (evita parpadeo al reconstruir)
+        canvas_carrito = tk.Canvas(frame_der, bg=COLORES['bg_panel'], highlightthickness=0)
+        scrollbar_carrito = ttk.Scrollbar(frame_der, orient="vertical", command=canvas_carrito.yview)
+        self.frame_carrito = tk.Frame(canvas_carrito, bg=COLORES['bg_panel'])
 
-        # Totales
+        self.frame_carrito.bind("<Configure>",
+            lambda e: canvas_carrito.configure(scrollregion=canvas_carrito.bbox("all")))
+
+        canvas_carrito.create_window((0, 0), window=self.frame_carrito, anchor="nw")
+        canvas_carrito.configure(yscrollcommand=scrollbar_carrito.set)
+
+        canvas_carrito.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 0))
+        scrollbar_carrito.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas_carrito.bind("<Enter>",
+            lambda e: canvas_carrito.bind_all("<MouseWheel>",
+                lambda ev: canvas_carrito.yview_scroll(int(-1*(ev.delta/120)), "units")))
+        canvas_carrito.bind("<Leave>",
+            lambda e: canvas_carrito.unbind_all("<MouseWheel>"))
+
+        # Totales (fuera del canvas para que siempre sean visibles)
         frame_totales = tk.Frame(frame_der, bg=COLORES['bg_tarjeta'])
-        frame_totales.pack(fill=tk.X, padx=10, pady=10)
+        frame_totales.pack(fill=tk.X, padx=10, pady=(5, 0))
 
         self.lbl_subtotal = tk.Label(frame_totales, text="Subtotal: $0.00", font=("Arial", 12),
                                     bg=COLORES['bg_tarjeta'], fg=COLORES['texto'])
@@ -934,10 +1035,23 @@ class AppInventario:
             widget.destroy()
 
         if len(busq) < 2:
+            # FIX: Mostrar hint cuando hay menos de 2 caracteres
+            if len(busq) == 1:
+                tk.Label(self.frame_resultados_venta,
+                        text="Escribe al menos 2 caracteres...",
+                        font=("Arial", 10), bg=COLORES['bg_panel'],
+                        fg=COLORES['texto_secundario']).pack(pady=10)
             return
 
-        resultados = [p for p in self.todos_productos 
+        resultados = [p for p in self.todos_productos
                      if busq in p['nombre'].lower() or busq in p['id'].lower() or busq in p.get('marca', '').lower()][:10]
+
+        if not resultados:
+            tk.Label(self.frame_resultados_venta,
+                    text="No se encontraron productos",
+                    font=("Arial", 10), bg=COLORES['bg_panel'],
+                    fg=COLORES['texto_secundario']).pack(pady=10)
+            return
 
         for p in resultados:
             frame = tk.Frame(self.frame_resultados_venta, bg=COLORES['bg_tarjeta'],
@@ -952,6 +1066,11 @@ class AppInventario:
 
             tk.Label(frame, text=f"${p['precio']:,.2f}", font=("Arial", 10, "bold"),
                     bg=COLORES['bg_tarjeta'], fg=COLORES['exito']).pack(side=tk.LEFT, padx=10, pady=5)
+
+            # Stock disponible
+            color_stock = COLORES['peligro'] if p['cantidad'] <= p['stock_minimo'] else COLORES['texto_secundario']
+            tk.Label(frame, text=f"Stock: {p['cantidad']}", font=("Arial", 9),
+                    bg=COLORES['bg_tarjeta'], fg=color_stock).pack(side=tk.LEFT, padx=5, pady=5)
 
             btn = tk.Button(frame, text="➕ Agregar", command=lambda prod=p: self.agregar_al_carrito(prod),
                            bg=COLORES['acento'], fg="white", font=("Arial", 9, "bold"),
@@ -983,6 +1102,10 @@ class AppInventario:
             messagebox.showwarning("Sin stock", "Este producto no tiene stock disponible")
 
     def actualizar_carrito(self):
+        """Reconstruye el carrito completo. Usado al agregar/quitar items."""
+        # Limpiar referencias de widgets de items anteriores
+        self._widgets_carrito = {}
+
         for widget in self.frame_carrito.winfo_children():
             widget.destroy()
 
@@ -1007,7 +1130,7 @@ class AppInventario:
         tk.Label(frame_headers, text="Total", font=("Arial", 9, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['texto_secundario'], width=12).pack(side=tk.LEFT)
 
-        # Items
+        # Items — guardar referencias a los labels para actualización sin parpadeo
         for item in self.carrito:
             frame_item = tk.Frame(self.frame_carrito, bg=COLORES['bg_tarjeta'])
             frame_item.pack(fill=tk.X, padx=5, pady=2)
@@ -1026,16 +1149,26 @@ class AppInventario:
                      bg=COLORES['bg_hover'], fg=COLORES['texto'], font=("Arial", 8, "bold"),
                      relief=tk.FLAT, width=2, cursor="hand2").pack(side=tk.LEFT)
 
-            tk.Label(fc, text=str(item['cantidad']), font=("Arial", 10, "bold"),
-                    bg=COLORES['bg_tarjeta'], fg=COLORES['acento'], width=3).pack(side=tk.LEFT)
+            # FIX: Guardar referencia al label de cantidad por ID del producto
+            lbl_cant = tk.Label(fc, text=str(item['cantidad']), font=("Arial", 10, "bold"),
+                    bg=COLORES['bg_tarjeta'], fg=COLORES['acento'], width=3)
+            lbl_cant.pack(side=tk.LEFT)
 
             tk.Button(fc, text="+", command=lambda i=item: self.cambiar_cantidad(i, 1),
                      bg=COLORES['bg_hover'], fg=COLORES['texto'], font=("Arial", 8, "bold"),
                      relief=tk.FLAT, width=2, cursor="hand2").pack(side=tk.LEFT)
 
             total_item = item['precio'] * item['cantidad']
-            tk.Label(frame_item, text=f"${total_item:,.2f}", font=("Arial", 10, "bold"),
-                    bg=COLORES['bg_tarjeta'], fg=COLORES['exito'], width=12).pack(side=tk.LEFT, pady=4)
+            # FIX: Guardar referencia al label de total por ID del producto
+            lbl_total_item = tk.Label(frame_item, text=f"${total_item:,.2f}", font=("Arial", 10, "bold"),
+                    bg=COLORES['bg_tarjeta'], fg=COLORES['exito'], width=12)
+            lbl_total_item.pack(side=tk.LEFT, pady=4)
+
+            # Guardar referencias indexadas por ID del producto
+            self._widgets_carrito[item['id']] = {
+                'lbl_cant': lbl_cant,
+                'lbl_total': lbl_total_item
+            }
 
             tk.Button(frame_item, text="🗑️", command=lambda i=item: self.quitar_del_carrito(i),
                      bg=COLORES['peligro'], fg="white", font=("Arial", 8),
@@ -1051,10 +1184,29 @@ class AppInventario:
         self.lbl_total_venta.config(text=f"TOTAL: ${total:,.2f}")
 
     def cambiar_cantidad(self, item, delta):
+        """FIX: Actualiza solo los labels del item sin reconstruir todo el carrito.
+        Esto elimina el parpadeo al presionar + o -."""
         nueva_cant = item['cantidad'] + delta
         if nueva_cant > 0 and nueva_cant <= item['stock_disponible']:
             item['cantidad'] = nueva_cant
-            self.actualizar_carrito()
+            # Actualizar solo los widgets de este item (sin parpadeo)
+            widgets = getattr(self, '_widgets_carrito', {}).get(item['id'])
+            if widgets:
+                widgets['lbl_cant'].config(text=str(nueva_cant))
+                total_item = item['precio'] * nueva_cant
+                widgets['lbl_total'].config(text=f"${total_item:,.2f}")
+                # Recalcular y actualizar totales generales
+                subtotal = sum(i['precio'] * i['cantidad'] for i in self.carrito)
+                iva = subtotal * 0.16
+                total = subtotal + iva
+                self.lbl_subtotal.config(text=f"Subtotal: ${subtotal:,.2f}")
+                self.lbl_iva.config(text=f"IVA (16%): ${iva:,.2f}")
+                self.lbl_total_venta.config(text=f"TOTAL: ${total:,.2f}")
+            else:
+                # Fallback: reconstruir si no hay referencia
+                self.actualizar_carrito()
+        elif nueva_cant <= 0:
+            self.quitar_del_carrito(item)
         elif nueva_cant > item['stock_disponible']:
             messagebox.showwarning("Stock", f"Máximo {item['stock_disponible']} unidades")
 
@@ -1119,6 +1271,9 @@ class AppInventario:
         self.carrito = []
         self.actualizar_carrito()
         self.entry_venta_buscar.delete(0, tk.END)
+        # Limpiar resultados de búsqueda
+        for widget in self.frame_resultados_venta.winfo_children():
+            widget.destroy()
 
     # ==================== REPORTES ====================
     def mostrar_reportes(self):
@@ -1126,7 +1281,28 @@ class AppInventario:
         self.vista_actual = "reportes"
         self.resaltar_boton("📈 Reportes")
 
-        frame_header = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'], height=70)
+        # Scroll para reportes
+        canvas_rep = tk.Canvas(self.frame_contenido, bg=COLORES['bg_principal'], highlightthickness=0)
+        scrollbar_rep = ttk.Scrollbar(self.frame_contenido, orient="vertical", command=canvas_rep.yview)
+        frame_rep = tk.Frame(canvas_rep, bg=COLORES['bg_principal'])
+
+        frame_rep.bind("<Configure>",
+            lambda e: canvas_rep.configure(scrollregion=canvas_rep.bbox("all")))
+
+        canvas_rep.create_window((0, 0), window=frame_rep, anchor="nw")
+        canvas_rep.configure(yscrollcommand=scrollbar_rep.set)
+
+        canvas_rep.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_rep.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas_rep.bind("<MouseWheel>",
+            lambda e: canvas_rep.yview_scroll(int(-1*(e.delta/120)), "units"))
+
+        def _ajustar_ancho_rep(event):
+            canvas_rep.itemconfig(canvas_rep.find_withtag("all")[0], width=event.width)
+        canvas_rep.bind("<Configure>", _ajustar_ancho_rep)
+
+        frame_header = tk.Frame(frame_rep, bg=COLORES['bg_principal'], height=70)
         frame_header.pack(fill=tk.X, padx=25, pady=(15, 5))
         frame_header.pack_propagate(False)
 
@@ -1141,7 +1317,7 @@ class AppInventario:
             ventas = []
 
         # Métricas
-        frame_metrics = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'])
+        frame_metrics = tk.Frame(frame_rep, bg=COLORES['bg_principal'])
         frame_metrics.pack(fill=tk.X, padx=25, pady=10)
 
         total_ventas = len(ventas)
@@ -1163,8 +1339,8 @@ class AppInventario:
             tk.Label(f, text=valor, font=("Arial", 24, "bold"), bg=COLORES['bg_panel'], fg=color).pack()
 
         # Historial de ventas
-        frame_historial = tk.Frame(self.frame_contenido, bg=COLORES['bg_panel'])
-        frame_historial.pack(fill=tk.BOTH, expand=True, padx=25, pady=15)
+        frame_historial = tk.Frame(frame_rep, bg=COLORES['bg_panel'])
+        frame_historial.pack(fill=tk.X, padx=25, pady=15)
 
         tk.Label(frame_historial, text="📋 Historial de Ventas", font=("Arial", 16, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=10)
