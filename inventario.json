@@ -1,0 +1,47 @@
+{
+    "P001": {
+        "id_producto": "P001",
+        "nombre": "Coca Cola 600ml",
+        "categoria": "Bebidas",
+        "cantidad": 50,
+        "precio": 18.5,
+        "minimo": 10,
+        "ultima_actualizacion": "2026-06-02 19:56:53"
+    },
+    "P002": {
+        "id_producto": "P002",
+        "nombre": "Sabritas Original",
+        "categoria": "Snacks",
+        "cantidad": 8,
+        "precio": 15.0,
+        "minimo": 5,
+        "ultima_actualizacion": "2026-06-02 19:56:53"
+    },
+    "P003": {
+        "id_producto": "P003",
+        "nombre": "Galletas María",
+        "categoria": "Galletas",
+        "cantidad": 25,
+        "precio": 12.0,
+        "minimo": 5,
+        "ultima_actualizacion": "2026-06-02 19:56:53"
+    },
+    "P004": {
+        "id_producto": "P004",
+        "nombre": "Agua Embotellada 1L",
+        "categoria": "Bebidas",
+        "cantidad": 3,
+        "precio": 10.0,
+        "minimo": 10,
+        "ultima_actualizacion": "2026-06-02 19:56:53"
+    },
+    "1234": {
+        "id_producto": "1234",
+        "nombre": "chocolate",
+        "categoria": "dulce",
+        "cantidad": 100,
+        "precio": 1500.0,
+        "minimo": 40,
+        "ultima_actualizacion": "2026-06-02 19:57:45"
+    }
+}

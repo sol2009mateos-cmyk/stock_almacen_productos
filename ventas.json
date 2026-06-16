@@ -1,0 +1,55 @@
+[
+  {
+    "fecha": "2026-06-09 19:36:33",
+    "productos": [
+      {
+        "id": "P0127",
+        "nombre": "Caramelos",
+        "precio": 1336.63,
+        "cantidad": 1,
+        "stock_disponible": 410
+      },
+      {
+        "id": "P0257",
+        "nombre": "Salchicha",
+        "precio": 878.01,
+        "cantidad": 1,
+        "stock_disponible": 250
+      }
+    ],
+    "subtotal": 2214.6400000000003,
+    "iva": 354.34240000000005,
+    "total": 2568.9824000000003,
+    "metodo_pago": "Efectivo"
+  },
+  {
+    "fecha": "2026-06-09 19:51:33",
+    "productos": [
+      {
+        "id": "P0077",
+        "nombre": "Miel de Abeja",
+        "precio": 703.07,
+        "cantidad": 1,
+        "stock_disponible": 149
+      },
+      {
+        "id": "P0001",
+        "nombre": "Coca Cola",
+        "precio": 1158.81,
+        "cantidad": 1,
+        "stock_disponible": 361
+      },
+      {
+        "id": "P0009",
+        "nombre": "Cerveza Modelo",
+        "precio": 1123.54,
+        "cantidad": 1,
+        "stock_disponible": 321
+      }
+    ],
+    "subtotal": 2985.42,
+    "iva": 477.66720000000004,
+    "total": 3463.0872,
+    "metodo_pago": "Tarjeta Crédito"
+  }
+]
