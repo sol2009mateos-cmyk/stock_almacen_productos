@@ -7,6 +7,8 @@ import os
 import random
 from datetime import datetime, timedelta
 import webbrowser
+import difflib  # Para búsqueda fuzzy
+from collections import Counter  # Para contar productos más vendidos
 
 # Configuración
 ANCHO = 1280  # Reducido para que quepa en la mayoría de pantallas
@@ -57,6 +59,10 @@ class AppInventario:
 
         # Mostrar dashboard al inicio
         self.mostrar_dashboard()
+        
+        # Atajos de teclado
+        self.root.bind('<F5>', lambda e: self.finalizar_venta() if self.vista_actual == 'ventas' else None)
+        self.root.bind('<Escape>', lambda e: self.limpiar_busqueda_venta() if self.vista_actual == 'ventas' else None)
 
     def cargar_datos(self):
         try:
@@ -69,6 +75,45 @@ class AppInventario:
         self.categorias.insert(0, "Todas")
         self.productos_filtrados = self.todos_productos.copy()
         self.producto_seleccionado = None
+
+    def mostrar_toast(self, mensaje, tipo="info", duracion=2000):
+        """Muestra una notificacion flotante (Toast).
+        tipo: 'info', 'exito', 'advertencia', 'peligro'
+        duracion: milisegundos
+        """
+        colores_toast = {
+            'info': (COLORES['acento'], 'white'),
+            'exito': (COLORES['exito'], 'white'),
+            'advertencia': (COLORES['advertencia'], 'white'),
+            'peligro': (COLORES['peligro'], 'white')
+        }
+        bg, fg = colores_toast.get(tipo, colores_toast['info'])
+        
+        # Crear ventana flotante
+        toast = tk.Toplevel(self.root)
+        toast.wm_overrideredirect(True)
+        toast.configure(bg=bg)
+        
+        # Posicionar en la esquina inferior derecha
+        ancho_toast = 300
+        alto_toast = 50
+        x = self.root.winfo_x() + self.root.winfo_width() - ancho_toast - 20
+        y = self.root.winfo_y() + self.root.winfo_height() - alto_toast - 20
+        toast.geometry(f"{ancho_toast}x{alto_toast}+{x}+{y}")
+        
+        # Agregar label con el mensaje
+        lbl = tk.Label(toast, text=mensaje, font=("Arial", 11, "bold"),
+                      bg=bg, fg=fg, wraplength=280, justify="center")
+        lbl.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Desaparecer despues de la duracion
+        def desaparecer():
+            try:
+                toast.destroy()
+            except:
+                pass
+        
+        toast.after(duracion, desaparecer)
 
     # ==================== MENU LATERAL ====================
     def crear_menu_lateral(self):
@@ -574,8 +619,19 @@ class AppInventario:
         for p in self.todos_productos:
             if cat != "Todas" and p['categoria'] != cat:
                 continue
-            if busq and busq not in p['nombre'].lower() and busq not in p['id'].lower() and busq not in p.get('marca', '').lower():
-                continue
+            # Búsqueda exacta primero
+            if busq:
+                nombre_match = busq in p['nombre'].lower()
+                id_match = busq in p['id'].lower()
+                marca_match = busq in p.get('marca', '').lower()
+                
+                # Si no hay coincidencia exacta, intentar búsqueda fuzzy
+                if not (nombre_match or id_match or marca_match):
+                    # Fuzzy search: permite pequeños errores ortográficos
+                    nombre_ratio = difflib.SequenceMatcher(None, busq, p['nombre'].lower()).ratio()
+                    marca_ratio = difflib.SequenceMatcher(None, busq, p.get('marca', '').lower()).ratio()
+                    if nombre_ratio < 0.6 and marca_ratio < 0.6:
+                        continue
             self.productos_filtrados.append(p)
 
         self.pagina_actual = 0
@@ -1076,19 +1132,41 @@ class AppInventario:
                         fg=COLORES['texto_secundario']).pack(pady=10)
             return
 
-        resultados = [p for p in self.todos_productos
-                     if busq in p['nombre'].lower() or busq in p['id'].lower() or busq in p.get('marca', '').lower()][:10]
+        # Búsqueda exacta + fuzzy search
+        resultados_exactos = [p for p in self.todos_productos
+                     if busq in p['nombre'].lower() or busq in p['id'].lower() or busq in p.get('marca', '').lower()]
+        
+        # Si hay menos de 5 resultados exactos, agregar fuzzy matches
+        if len(resultados_exactos) < 5:
+            resultados_fuzzy = []
+            for p in self.todos_productos:
+                if p not in resultados_exactos:
+                    nombre_ratio = difflib.SequenceMatcher(None, busq, p['nombre'].lower()).ratio()
+                    marca_ratio = difflib.SequenceMatcher(None, busq, p.get('marca', '').lower()).ratio()
+                    if nombre_ratio >= 0.65 or marca_ratio >= 0.65:
+                        resultados_fuzzy.append((max(nombre_ratio, marca_ratio), p))
+            resultados_fuzzy.sort(reverse=True, key=lambda x: x[0])
+            resultados = resultados_exactos + [p for _, p in resultados_fuzzy]
+        else:
+            resultados = resultados_exactos
+        
+        resultados = resultados[:10]
 
         if not resultados:
             tk.Label(self.frame_resultados_venta,
-                    text="No se encontraron productos",
+                    text="❌ No se encontraron productos",
                     font=("Arial", 10), bg=COLORES['bg_panel'],
-                    fg=COLORES['texto_secundario']).pack(pady=10)
+                    fg=COLORES['peligro']).pack(pady=10)
             return
 
         for p in resultados:
+            # Cambiar color del borde si es un match fuzzy
+            nombre_ratio = difflib.SequenceMatcher(None, busq, p['nombre'].lower()).ratio()
+            es_fuzzy = nombre_ratio >= 0.65 and nombre_ratio < 1.0
+            borde_color = COLORES['advertencia'] if es_fuzzy else COLORES['borde']
+            
             frame = tk.Frame(self.frame_resultados_venta, bg=COLORES['bg_tarjeta'],
-                            highlightbackground=COLORES['borde'], highlightthickness=1)
+                            highlightbackground=borde_color, highlightthickness=1)
             frame.pack(fill=tk.X, padx=5, pady=3)
 
             tk.Label(frame, text=f"{p['id']}", font=("Arial", 9, "bold"),
@@ -1104,6 +1182,11 @@ class AppInventario:
             color_stock = COLORES['peligro'] if p['cantidad'] <= p['stock_minimo'] else COLORES['texto_secundario']
             tk.Label(frame, text=f"Stock: {p['cantidad']}", font=("Arial", 9),
                     bg=COLORES['bg_tarjeta'], fg=color_stock).pack(side=tk.LEFT, padx=5, pady=5)
+            
+            # Indicador de fuzzy match
+            if es_fuzzy:
+                tk.Label(frame, text="⚠️ Aproximado", font=("Arial", 8),
+                        bg=COLORES['bg_tarjeta'], fg=COLORES['advertencia']).pack(side=tk.LEFT, padx=5, pady=5)
 
             btn = tk.Button(frame, text="➕ Agregar", command=lambda prod=p: self.agregar_al_carrito(prod),
                            bg=COLORES['acento'], fg="white", font=("Arial", 9, "bold"),
@@ -1116,8 +1199,9 @@ class AppInventario:
             if item['id'] == prod['id']:
                 if item['cantidad'] < prod['cantidad']:
                     item['cantidad'] += 1
+                    self.mostrar_toast(f"✅ {prod['nombre']} (+1)", tipo="exito", duracion=1500)
                 else:
-                    messagebox.showwarning("Stock insuficiente", f"Solo hay {prod['cantidad']} unidades disponibles")
+                    self.mostrar_toast(f"⚠️ Solo hay {prod['cantidad']} unidades", tipo="advertencia", duracion=2000)
                 self.actualizar_carrito()
                 return
 
@@ -1130,9 +1214,10 @@ class AppInventario:
                 'cantidad': 1,
                 'stock_disponible': prod['cantidad']
             })
+            self.mostrar_toast(f"✅ {prod['nombre']} agregado al carrito", tipo="exito", duracion=1500)
             self.actualizar_carrito()
         else:
-            messagebox.showwarning("Sin stock", "Este producto no tiene stock disponible")
+            self.mostrar_toast("❌ Sin stock disponible", tipo="peligro", duracion=2000)
 
     def actualizar_carrito(self):
         """Reconstruye el carrito completo. Usado al agregar/quitar items."""
@@ -1253,9 +1338,16 @@ class AppInventario:
                 self.carrito = []
                 self.actualizar_carrito()
 
+    def limpiar_busqueda_venta(self):
+        """Limpia el buscador de productos en Punto de Venta (atajo Esc)"""
+        if self.vista_actual == 'ventas':
+            self.entry_venta_buscar.delete(0, tk.END)
+            for widget in self.frame_resultados_venta.winfo_children():
+                widget.destroy()
+
     def finalizar_venta(self):
         if not self.carrito:
-            messagebox.showwarning("Carrito vacío", "Agrega productos al carrito")
+            self.mostrar_toast("❌ Carrito vacío", tipo="peligro", duracion=2000)
             return
 
         subtotal = sum(item['precio'] * item['cantidad'] for item in self.carrito)
@@ -1299,7 +1391,7 @@ class AppInventario:
         with open('productos_1000.json', 'w', encoding='utf-8') as f:
             json.dump(self.todos_productos, f, ensure_ascii=False, indent=2)
 
-        messagebox.showinfo("✅ Venta Exitosa", f"Venta de ${total:,.2f} registrada\n\n¡Gracias por su compra!")
+        self.mostrar_toast(f"✅ Venta de ${total:,.2f} registrada", tipo="exito", duracion=2000)
 
         self.carrito = []
         self.actualizar_carrito()
