@@ -506,6 +506,10 @@ class AppInventario:
         self.vista_actual = "inventario"
         self.resaltar_boton("📦 Inventario")
         self.pagina_actual = 0
+        
+        # FIX: Recargar categorías dinámicamente para incluir nuevas del JSON
+        self.categorias = sorted(list(set(p['categoria'] for p in self.todos_productos)))
+        self.categorias.insert(0, "Todas")
 
         # Header
         frame_header = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'], height=70)
@@ -1031,6 +1035,10 @@ class AppInventario:
         self.limpiar_contenido()
         self.vista_actual = "ventas"
         self.resaltar_boton("🛒 Punto de Venta")
+        
+        # FIX: Recargar categorías dinámicamente
+        self.categorias = sorted(list(set(p['categoria'] for p in self.todos_productos)))
+        self.categorias.insert(0, "Todas")
 
         # Header
         frame_header = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'], height=70)
