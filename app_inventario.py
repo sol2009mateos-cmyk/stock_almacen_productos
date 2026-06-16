@@ -161,6 +161,11 @@ class AppInventario:
         # Separador
         tk.Frame(self.frame_menu, bg=COLORES['borde'], height=1).pack(fill=tk.X, padx=15, pady=10)
 
+        # Botón de actualizar
+        tk.Button(self.frame_menu, text="🔄 Actualizar Todo", command=self.actualizar_todo,
+                 bg=COLORES['bg_hover'], fg=COLORES['acento'], font=("Arial", 9, "bold"),
+                 relief=tk.FLAT, padx=10, pady=6, cursor="hand2").pack(fill=tk.X, padx=10, pady=8)
+
         # Info del sistema
         tk.Label(self.frame_menu, text="📅 " + datetime.now().strftime("%d/%m/%Y"),
                 font=("Arial", 10), bg=COLORES['bg_panel'],
@@ -193,6 +198,20 @@ class AppInventario:
     def limpiar_contenido(self):
         for widget in self.frame_contenido.winfo_children():
             widget.destroy()
+    
+    def actualizar_todo(self):
+        """Recarga todos los datos desde los archivos JSON"""
+        self.cargar_datos()
+        # Refrescar la vista actual
+        if self.vista_actual == "dashboard":
+            self.mostrar_dashboard()
+        elif self.vista_actual == "inventario":
+            self.mostrar_inventario()
+        elif self.vista_actual == "ventas":
+            self.mostrar_ventas()
+        elif self.vista_actual == "reportes":
+            self.mostrar_reportes()
+        self.mostrar_toast("🔄 Datos actualizados", tipo="exito", duracion=1500)
 
     # ==================== DASHBOARD ====================
     def mostrar_dashboard(self):
@@ -421,6 +440,48 @@ class AppInventario:
         else:
             tk.Label(frame_vencer, text="✅ Sin productos por vencer", font=("Arial", 11),
                     bg=COLORES['bg_panel'], fg=COLORES['exito']).pack(pady=15)
+        
+        # --- Sección: Productos Más Vendidos ---
+        frame_vendidos = tk.Frame(frame_dash, bg=COLORES['bg_panel'])
+        frame_vendidos.pack(fill=tk.X, padx=25, pady=15)
+        
+        tk.Label(frame_vendidos, text="⭐ Top 5 Más Vendidos", font=("Arial", 13, "bold"),
+                bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=8)
+        
+        # Calcular productos más vendidos desde ventas.json
+        try:
+            with open('ventas.json', 'r', encoding='utf-8') as f:
+                ventas = json.load(f)
+            contador_ventas = Counter()
+            for venta in ventas:
+                for prod in venta['productos']:
+                    contador_ventas[prod['id']] += prod['cantidad']
+            top_vendidos = contador_ventas.most_common(5)
+        except:
+            top_vendidos = []
+        
+        if top_vendidos:
+            for idx, (prod_id, cantidad) in enumerate(top_vendidos, 1):
+                # Buscar el producto
+                prod = next((p for p in self.todos_productos if p['id'] == prod_id), None)
+                if prod:
+                    frame_item = tk.Frame(frame_vendidos, bg=COLORES['bg_tarjeta'])
+                    frame_item.pack(fill=tk.X, padx=10, pady=3)
+                    
+                    # Posición
+                    tk.Label(frame_item, text=f"#{idx}", font=("Arial", 10, "bold"),
+                            bg=COLORES['bg_tarjeta'], fg=COLORES['acento'], width=3).pack(side=tk.LEFT, padx=8, pady=4)
+                    
+                    # Nombre
+                    tk.Label(frame_item, text=prod['nombre'][:30], font=("Arial", 10),
+                            bg=COLORES['bg_tarjeta'], fg=COLORES['texto']).pack(side=tk.LEFT, padx=5, pady=4)
+                    
+                    # Cantidad vendida
+                    tk.Label(frame_item, text=f"Vendidos: {cantidad}", font=("Arial", 10, "bold"),
+                            bg=COLORES['bg_tarjeta'], fg=COLORES['exito']).pack(side=tk.RIGHT, padx=10, pady=4)
+        else:
+            tk.Label(frame_vendidos, text="📊 Sin datos de ventas aún", font=("Arial", 11),
+                    bg=COLORES['bg_panel'], fg=COLORES['texto_secundario']).pack(pady=15)
 
     def crear_tarjeta_resumen(self, parent, titulo, valor, color, subtitulo):
         # FIX: Usar minsize en lugar de height fijo para evitar contenido cortado
@@ -800,7 +861,11 @@ class AppInventario:
             lbl.config(text=str(valor))
 
         # Estado
-        if prod['cantidad'] <= prod['stock_minimo']:
+        # FIX: Alerta de margen bajo (< 15%)
+        margen = prod.get('margen', 0)
+        if margen < 15:
+            self.lbl_estado_det.config(text=f"📈 MARGEN BAJO ({margen}%) - Revisar precio", fg=COLORES['advertencia'])
+        elif prod['cantidad'] <= prod['stock_minimo']:
             self.lbl_estado_det.config(text="🔴 STOCK BAJO - ¡Reponer urgentemente!", fg=COLORES['peligro'])
         elif prod.get('dias_para_vencer') and prod['dias_para_vencer'] <= 7:
             self.lbl_estado_det.config(text=f"⚠️ POR VENCER - {prod['dias_para_vencer']} días restantes", fg=COLORES['peligro'])
@@ -1391,6 +1456,9 @@ class AppInventario:
         with open('productos_1000.json', 'w', encoding='utf-8') as f:
             json.dump(self.todos_productos, f, ensure_ascii=False, indent=2)
 
+        # Generar ticket
+        self.generar_ticket(venta, total)
+        
         self.mostrar_toast(f"✅ Venta de ${total:,.2f} registrada", tipo="exito", duracion=2000)
 
         self.carrito = []
@@ -1399,6 +1467,51 @@ class AppInventario:
         # Limpiar resultados de búsqueda
         for widget in self.frame_resultados_venta.winfo_children():
             widget.destroy()
+
+    def generar_ticket(self, venta, total):
+        """Genera un archivo de ticket formateado"""
+        try:
+            # Crear nombre de archivo con timestamp
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            nombre_archivo = f"ticket_{timestamp}.txt"
+            
+            # Crear contenido del ticket
+            linea = "=" * 50
+            contenido = f"""
+{linea}
+                    🧷 TICKET DE COMPRA
+{linea}
+Fecha: {venta['fecha']}
+Método de Pago: {venta['metodo_pago']}
+{linea}
+
+PRODUCTOS:
+"""
+            
+            for prod in venta['productos']:
+                contenido += f"""
+{prod['nombre']}
+  ID: {prod['id']} | Cantidad: {prod['cantidad']} x ${prod['precio']:,.2f}
+  Subtotal: ${prod['precio'] * prod['cantidad']:,.2f}
+"""
+            
+            contenido += f"""
+{linea}
+Subtotal: ${venta['subtotal']:,.2f}
+IVA (16%): ${venta['iva']:,.2f}
+{linea}
+TOTAL: ${total:,.2f}
+{linea}
+
+¡Gracias por su compra!
+Vuelva pronto 😊
+"""
+            
+            # Guardar archivo
+            with open(nombre_archivo, 'w', encoding='utf-8') as f:
+                f.write(contenido)
+        except:
+            pass  # Silenciosamente ignorar errores de ticket
 
     # ==================== REPORTES ====================
     def mostrar_reportes(self):
