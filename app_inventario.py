@@ -980,9 +980,18 @@ class AppInventario:
         frame_der = tk.Frame(frame_main, bg=COLORES['bg_panel'])
         frame_der.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
 
-        # Label del carrito (fuera del grid, en pack)
+        # FIX: Configurar grid ANTES de agregar widgets para evitar conflicto pack/grid
+        frame_der.rowconfigure(0, weight=0)  # Label del título
+        frame_der.rowconfigure(1, weight=1)  # Canvas del carrito (expande)
+        frame_der.rowconfigure(2, weight=0)  # Totales
+        frame_der.rowconfigure(3, weight=0)  # Método de pago
+        frame_der.rowconfigure(4, weight=0)  # Botones
+        frame_der.columnconfigure(0, weight=1)
+        frame_der.columnconfigure(1, weight=0)  # Scrollbar
+
+        # Label del carrito usando grid
         tk.Label(frame_der, text="🛒 Carrito de Compras", font=("Arial", 14, "bold"),
-                bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=10)
+                bg=COLORES['bg_panel'], fg=COLORES['acento']).grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=10)
 
         # FIX: Canvas con scroll para el carrito (evita parpadeo al reconstruir)
         # Usar grid para que se ajuste correctamente
@@ -996,8 +1005,8 @@ class AppInventario:
         canvas_carrito.create_window((0, 0), window=self.frame_carrito, anchor="nw")
         canvas_carrito.configure(yscrollcommand=scrollbar_carrito.set)
 
-        canvas_carrito.grid(row=0, column=0, sticky="nsew", padx=(0, 0))
-        scrollbar_carrito.grid(row=0, column=1, sticky="ns")
+        canvas_carrito.grid(row=1, column=0, sticky="nsew", padx=(0, 0))
+        scrollbar_carrito.grid(row=1, column=1, sticky="ns")
 
         # Scroll del mouse solo cuando el cursor está sobre el canvas
         canvas_carrito.bind("<Enter>",
@@ -1007,11 +1016,8 @@ class AppInventario:
             lambda e: canvas_carrito.unbind_all("<MouseWheel>"))
 
         # Totales (fuera del canvas para que siempre sean visibles)
-        # FIX: Configurar grid para frame_der ANTES de crear los widgets
-        # (ya se configuró arriba, pero dejamos el comentario para claridad)
-
         frame_totales = tk.Frame(frame_der, bg=COLORES['bg_tarjeta'])
-        frame_totales.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 0))
+        frame_totales.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=(5, 0))
         frame_totales.columnconfigure(0, weight=1)
 
         self.lbl_subtotal = tk.Label(frame_totales, text="Subtotal: $0.00", font=("Arial", 11),
@@ -1028,7 +1034,7 @@ class AppInventario:
 
         # Método de pago
         frame_pago = tk.Frame(frame_der, bg=COLORES['bg_panel'])
-        frame_pago.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+        frame_pago.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         frame_pago.columnconfigure(1, weight=1)
 
         tk.Label(frame_pago, text="💳 Método:", font=("Arial", 10),
@@ -1041,7 +1047,7 @@ class AppInventario:
 
         # Botones
         frame_btns = tk.Frame(frame_der, bg=COLORES['bg_panel'])
-        frame_btns.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        frame_btns.grid(row=4, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
         frame_btns.columnconfigure(0, weight=1)
         frame_btns.columnconfigure(1, weight=1)
 
