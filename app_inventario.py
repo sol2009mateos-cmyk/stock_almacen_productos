@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 import webbrowser
 
 # Configuración
-ANCHO = 1500
-ALTO = 950
+ANCHO = 1280  # Reducido para que quepa en la mayoría de pantallas
+ALTO = 800
 
 # Colores tema oscuro mejorado
 COLORES = {
@@ -36,7 +36,7 @@ class AppInventario:
         self.root.title("🏪 StockMaster Pro - Sistema de Inventario")
         self.root.geometry(f"{ANCHO}x{ALTO}")
         self.root.configure(bg=COLORES['bg_principal'])
-        self.root.minsize(1300, 800)
+        self.root.minsize(1024, 600)  # Tamaño mínimo más razonable
 
         # Datos
         self.cargar_datos()
@@ -228,13 +228,18 @@ class AppInventario:
             self.crear_tarjeta_resumen(frame_tarjetas, titulo, valor, color, subtitulo)
 
         # Panel inferior: gráfica + listas
-        # FIX: Usar altura mínima fija para que no se corte
+        # FIX: Usar grid con pesos para que se adapte al tamaño disponible
         frame_inferior = tk.Frame(frame_dash, bg=COLORES['bg_principal'])
-        frame_inferior.pack(fill=tk.X, padx=25, pady=10)
+        frame_inferior.pack(fill=tk.BOTH, expand=True, padx=25, pady=10)
+
+        # Configurar grid con pesos iguales para que ambos lados compartan espacio
+        frame_inferior.columnconfigure(0, weight=1)  # Gráfica
+        frame_inferior.columnconfigure(1, weight=1)  # Stock bajo + por vencer
+        frame_inferior.rowconfigure(0, weight=1)
 
         # --- Gráfica ventas 7 días ---
         frame_grafica = tk.Frame(frame_inferior, bg=COLORES['bg_panel'])
-        frame_grafica.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
+        frame_grafica.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
         tk.Label(frame_grafica, text="📈 Ventas — últimos 7 días", font=("Arial", 13, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=(10, 5))
@@ -250,10 +255,10 @@ class AppInventario:
             dias_labels.append(etiqueta)
             dias_valores.append(total_dia)
 
-        # FIX: altura fija garantizada para la gráfica
+        # Canvas para la gráfica con altura mínima
         canvas_g = tk.Canvas(frame_grafica, bg=COLORES['bg_panel'], highlightthickness=0,
-                             height=220, width=400)
-        canvas_g.pack(fill=tk.X, padx=15, pady=(0, 10))
+                             height=200)
+        canvas_g.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))
 
         def dibujar_grafica(event=None):
             canvas_g.delete("all")
@@ -309,13 +314,17 @@ class AppInventario:
         canvas_g.after(100, dibujar_grafica)
 
         # --- Columna derecha: stock bajo + por vencer ---
-        frame_derecha = tk.Frame(frame_inferior, bg=COLORES['bg_principal'], width=380)
-        frame_derecha.pack(side=tk.RIGHT, fill=tk.BOTH)
-        frame_derecha.pack_propagate(False)
+        frame_derecha = tk.Frame(frame_inferior, bg=COLORES['bg_principal'])
+        frame_derecha.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+
+        # Configurar grid para los dos paneles (stock bajo y por vencer)
+        frame_derecha.rowconfigure(0, weight=1)
+        frame_derecha.rowconfigure(1, weight=1)
+        frame_derecha.columnconfigure(0, weight=1)
 
         # Productos con stock bajo
         frame_stock = tk.Frame(frame_derecha, bg=COLORES['bg_panel'])
-        frame_stock.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        frame_stock.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
 
         tk.Label(frame_stock, text="🔴 Stock Bajo", font=("Arial", 13, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['peligro']).pack(anchor="w", padx=15, pady=8)
@@ -341,7 +350,7 @@ class AppInventario:
 
         # Productos por vencer
         frame_vencer = tk.Frame(frame_derecha, bg=COLORES['bg_panel'])
-        frame_vencer.pack(fill=tk.BOTH, expand=True)
+        frame_vencer.grid(row=1, column=0, sticky="nsew")
 
         tk.Label(frame_vencer, text="⚠️ Por Vencer", font=("Arial", 13, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['advertencia']).pack(anchor="w", padx=15, pady=8)
@@ -910,14 +919,18 @@ class AppInventario:
         tk.Label(frame_header, text="🛒 Punto de Venta", font=("Arial", 22, "bold"),
                 bg=COLORES['bg_principal'], fg=COLORES['texto_titulo']).pack(side=tk.LEFT, pady=12)
 
-        # Panel dividido
+        # Panel dividido con grid para que sea responsivo
         frame_main = tk.Frame(self.frame_contenido, bg=COLORES['bg_principal'])
         frame_main.pack(fill=tk.BOTH, expand=True, padx=25, pady=5)
 
+        # Configurar grid con pesos iguales para ambos lados
+        frame_main.columnconfigure(0, weight=1)  # Izquierda: búsqueda
+        frame_main.columnconfigure(1, weight=1)  # Derecha: carrito
+        frame_main.rowconfigure(0, weight=1)
+
         # Izquierda: Buscador de productos
-        frame_izq = tk.Frame(frame_main, bg=COLORES['bg_panel'], width=500)
-        frame_izq.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
-        frame_izq.pack_propagate(False)
+        frame_izq = tk.Frame(frame_main, bg=COLORES['bg_panel'])
+        frame_izq.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
         tk.Label(frame_izq, text="🔍 Buscar Producto", font=("Arial", 14, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=10)
@@ -949,9 +962,14 @@ class AppInventario:
         canvas_res.create_window((0, 0), window=self.frame_resultados_venta, anchor="nw")
         canvas_res.configure(yscrollcommand=scrollbar_res.set)
 
-        canvas_res.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar_res.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas_res.grid(row=0, column=0, sticky="nsew")
+        scrollbar_res.grid(row=0, column=1, sticky="ns")
 
+        # Configurar grid para frame_res_outer
+        frame_res_outer.rowconfigure(0, weight=1)
+        frame_res_outer.columnconfigure(0, weight=1)
+
+        # Scroll del mouse solo cuando el cursor está sobre el canvas de resultados
         canvas_res.bind("<Enter>",
             lambda e: canvas_res.bind_all("<MouseWheel>",
                 lambda ev: canvas_res.yview_scroll(int(-1*(ev.delta/120)), "units")))
@@ -959,14 +977,15 @@ class AppInventario:
             lambda e: canvas_res.unbind_all("<MouseWheel>"))
 
         # Derecha: Carrito
-        frame_der = tk.Frame(frame_main, bg=COLORES['bg_panel'], width=500)
-        frame_der.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(8, 0))
-        frame_der.pack_propagate(False)
+        frame_der = tk.Frame(frame_main, bg=COLORES['bg_panel'])
+        frame_der.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
 
+        # Label del carrito (fuera del grid, en pack)
         tk.Label(frame_der, text="🛒 Carrito de Compras", font=("Arial", 14, "bold"),
                 bg=COLORES['bg_panel'], fg=COLORES['acento']).pack(anchor="w", padx=15, pady=10)
 
         # FIX: Canvas con scroll para el carrito (evita parpadeo al reconstruir)
+        # Usar grid para que se ajuste correctamente
         canvas_carrito = tk.Canvas(frame_der, bg=COLORES['bg_panel'], highlightthickness=0)
         scrollbar_carrito = ttk.Scrollbar(frame_der, orient="vertical", command=canvas_carrito.yview)
         self.frame_carrito = tk.Frame(canvas_carrito, bg=COLORES['bg_panel'])
@@ -977,9 +996,10 @@ class AppInventario:
         canvas_carrito.create_window((0, 0), window=self.frame_carrito, anchor="nw")
         canvas_carrito.configure(yscrollcommand=scrollbar_carrito.set)
 
-        canvas_carrito.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 0))
-        scrollbar_carrito.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas_carrito.grid(row=0, column=0, sticky="nsew", padx=(0, 0))
+        scrollbar_carrito.grid(row=0, column=1, sticky="ns")
 
+        # Scroll del mouse solo cuando el cursor está sobre el canvas
         canvas_carrito.bind("<Enter>",
             lambda e: canvas_carrito.bind_all("<MouseWheel>",
                 lambda ev: canvas_carrito.yview_scroll(int(-1*(ev.delta/120)), "units")))
@@ -987,44 +1007,51 @@ class AppInventario:
             lambda e: canvas_carrito.unbind_all("<MouseWheel>"))
 
         # Totales (fuera del canvas para que siempre sean visibles)
+        # FIX: Configurar grid para frame_der ANTES de crear los widgets
+        # (ya se configuró arriba, pero dejamos el comentario para claridad)
+
         frame_totales = tk.Frame(frame_der, bg=COLORES['bg_tarjeta'])
-        frame_totales.pack(fill=tk.X, padx=10, pady=(5, 0))
+        frame_totales.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 0))
+        frame_totales.columnconfigure(0, weight=1)
 
-        self.lbl_subtotal = tk.Label(frame_totales, text="Subtotal: $0.00", font=("Arial", 12),
+        self.lbl_subtotal = tk.Label(frame_totales, text="Subtotal: $0.00", font=("Arial", 11),
                                     bg=COLORES['bg_tarjeta'], fg=COLORES['texto'])
-        self.lbl_subtotal.pack(anchor="e", padx=15, pady=2)
+        self.lbl_subtotal.pack(anchor="e", padx=15, pady=1)
 
-        self.lbl_iva = tk.Label(frame_totales, text="IVA (16%): $0.00", font=("Arial", 12),
+        self.lbl_iva = tk.Label(frame_totales, text="IVA (16%): $0.00", font=("Arial", 11),
                                bg=COLORES['bg_tarjeta'], fg=COLORES['texto'])
-        self.lbl_iva.pack(anchor="e", padx=15, pady=2)
+        self.lbl_iva.pack(anchor="e", padx=15, pady=1)
 
-        self.lbl_total_venta = tk.Label(frame_totales, text="TOTAL: $0.00", font=("Arial", 16, "bold"),
+        self.lbl_total_venta = tk.Label(frame_totales, text="TOTAL: $0.00", font=("Arial", 14, "bold"),
                                        bg=COLORES['bg_tarjeta'], fg=COLORES['exito'])
-        self.lbl_total_venta.pack(anchor="e", padx=15, pady=5)
+        self.lbl_total_venta.pack(anchor="e", padx=15, pady=3)
 
         # Método de pago
         frame_pago = tk.Frame(frame_der, bg=COLORES['bg_panel'])
-        frame_pago.pack(fill=tk.X, padx=10, pady=5)
+        frame_pago.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+        frame_pago.columnconfigure(1, weight=1)
 
-        tk.Label(frame_pago, text="💳 Método de Pago:", font=("Arial", 11),
-                bg=COLORES['bg_panel'], fg=COLORES['texto_secundario']).pack(side=tk.LEFT)
+        tk.Label(frame_pago, text="💳 Método:", font=("Arial", 10),
+                bg=COLORES['bg_panel'], fg=COLORES['texto_secundario']).grid(row=0, column=0, sticky="w", padx=5)
 
         combo_pago = ttk.Combobox(frame_pago, textvariable=self.metodo_pago,
                                  values=["Efectivo", "Tarjeta Débito", "Tarjeta Crédito", "Transferencia"],
-                                 state="readonly", width=18, font=("Arial", 10))
-        combo_pago.pack(side=tk.LEFT, padx=10)
+                                 state="readonly", width=15, font=("Arial", 9))
+        combo_pago.grid(row=0, column=1, sticky="ew", padx=5)
 
         # Botones
         frame_btns = tk.Frame(frame_der, bg=COLORES['bg_panel'])
-        frame_btns.pack(fill=tk.X, padx=10, pady=10)
+        frame_btns.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+        frame_btns.columnconfigure(0, weight=1)
+        frame_btns.columnconfigure(1, weight=1)
 
         tk.Button(frame_btns, text="✅ Finalizar Venta", command=self.finalizar_venta,
-                 bg=COLORES['exito'], fg="white", font=("Arial", 12, "bold"),
-                 relief=tk.FLAT, padx=20, pady=8, cursor="hand2").pack(side=tk.LEFT, padx=5)
+                 bg=COLORES['exito'], fg="white", font=("Arial", 11, "bold"),
+                 relief=tk.FLAT, padx=15, pady=6, cursor="hand2").grid(row=0, column=0, sticky="ew", padx=2)
 
         tk.Button(frame_btns, text="🗑️ Vaciar Carrito", command=self.vaciar_carrito,
-                 bg=COLORES['peligro'], fg="white", font=("Arial", 12, "bold"),
-                 relief=tk.FLAT, padx=20, pady=8, cursor="hand2").pack(side=tk.LEFT, padx=5)
+                 bg=COLORES['peligro'], fg="white", font=("Arial", 11, "bold"),
+                 relief=tk.FLAT, padx=15, pady=6, cursor="hand2").grid(row=0, column=1, sticky="ew", padx=2)
 
         self.actualizar_carrito()
 
