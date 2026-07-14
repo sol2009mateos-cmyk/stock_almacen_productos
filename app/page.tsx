@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const { count: cantProductos, error: errorProductos } = await supabase
     .from("productos")
